@@ -1,0 +1,5 @@
+.vscode/
+bin/
+obj/
+flowers/
+coach-dotnet.csproj
