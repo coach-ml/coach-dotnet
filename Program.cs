@@ -14,8 +14,10 @@ namespace CoachSample
 
         static async Task Login() {
             var c = new CoachClient();
-            await c.Login("");
+            await c.Login("B1dp8OKfOk2RskZ9EkJai3rIAkENZQky2eINkWhi");
             await c.CacheModel("flowers");
+            
+            c.GetModel("flowers");
         }
     }
 }

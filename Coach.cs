@@ -5,9 +5,14 @@ using System.Net.Http;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using TensorFlow;
 
 namespace Coach {
-    class CoachModel {
+    public class CoachModel {
+        public CoachModel(TFGraph graph, string[] labels, string module) {
+
+        }
         
     }
 
@@ -40,6 +45,10 @@ namespace Coach {
             return this.Profile != null;
         }
 
+        private dynamic ReadManifest(string path) {
+            return JsonConvert.DeserializeObject(File.ReadAllText(path));
+        }
+
         public async Task CacheModel(string name, string path=".") {
             if (!IsAuthenticated())
                 throw new Exception("User is not authenticated");
@@ -53,7 +62,7 @@ namespace Coach {
 
             if (File.Exists(profileManifest)) {
                 // Load existing model manifest
-                dynamic manifest = JsonConvert.DeserializeObject(File.ReadAllText(profileManifest));
+                dynamic manifest = ReadManifest(profileManifest);
                 int manifestVersion = manifest[name].version;
 
                 if (profileVersion == manifestVersion) {
@@ -107,6 +116,25 @@ namespace Coach {
             string responseBody = await response.Content.ReadAsStringAsync();
             var profile = JsonConvert.DeserializeObject<Profile>(responseBody);
             return profile;
+        }
+
+        public CoachModel GetModel(string path) {
+            var graphPath = $"{path}/frozen.pb";
+            var labelPath = $"{path}/manifest.json";
+            
+            // Load the graphdef
+            var graph = new TFGraph();
+            graph.Import(File.ReadAllBytes(graphPath));
+
+            var manifest = ReadManifest(labelPath);
+            // Get first key
+            
+            // var z = JToken.FromObject(manifest).First;
+
+            string[] labels = manifest.lables;
+            string baseModule = manifest.module;
+
+            return new CoachModel(graph, labels, baseModule);
         }
     }
 }
