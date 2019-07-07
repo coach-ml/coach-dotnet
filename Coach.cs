@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Net.Http;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -16,6 +17,14 @@ namespace Coach {
         
     }
 
+    public struct Model {
+        public string name { get; set; }
+        public string status { get; set; }
+        public int version { get; set; }
+        public string module { get; set; }
+        public string[] labels { get; set; }
+    }
+
     public class Profile {
         [JsonProperty("id")]
         public string Id { get; set; }
@@ -23,7 +32,7 @@ namespace Coach {
         public string Bucket { get; set; }
 
         [JsonProperty("models")]
-        public dynamic Models { get; set; }
+        public Model[] Models { get; set; }
     }
 
     public class CoachClient {
@@ -45,8 +54,8 @@ namespace Coach {
             return this.Profile != null;
         }
 
-        private dynamic ReadManifest(string path) {
-            return JsonConvert.DeserializeObject(File.ReadAllText(path));
+        private Model ReadManifest(string path) {
+            return JsonConvert.DeserializeObject<Model>(File.ReadAllText(path));
         }
 
         public async Task CacheModel(string name, string path=".") {
@@ -57,13 +66,15 @@ namespace Coach {
             if (!Directory.Exists(name))
                 Directory.CreateDirectory(name);
 
-            int profileVersion = this.Profile.Models[name].version;
+            Model model = this.Profile.Models.Single(m => m.name == name);
+
+            int profileVersion = model.version;
             string profileManifest = $"{path}/{name}/manifest.json";
 
             if (File.Exists(profileManifest)) {
                 // Load existing model manifest
-                dynamic manifest = ReadManifest(profileManifest);
-                int manifestVersion = manifest[name].version;
+                Model manifest = ReadManifest(profileManifest);
+                int manifestVersion = manifest.version;
 
                 if (profileVersion == manifestVersion) {
                     if (this.IsDebug) {
@@ -73,13 +84,7 @@ namespace Coach {
                     return;
                 }
             } else {
-                // Write profile to local manifest
-                var model = this.Profile.Models[name];
-                
-                dynamic parent = JsonConvert.DeserializeObject("{}");
-                parent[name] = model;
-
-                var json = JsonConvert.SerializeObject(parent);
+                var json = JsonConvert.SerializeObject(model);
                 File.WriteAllText(profileManifest, json);
             }
 
@@ -127,15 +132,9 @@ namespace Coach {
             graph.Import(File.ReadAllBytes(graphPath));
 
             var manifest = ReadManifest(labelPath);
-
-            // Get root
-            string name = String.Empty;
-            foreach (var prop in manifest) {
-                name = prop.Name;
-            }
             
-            string[] labels = manifest[name].labels.ToObject<string[]>();
-            string baseModule = manifest[name].module;
+            string[] labels = manifest.labels;
+            string baseModule = manifest.module;
 
             return new CoachModel(graph, labels, baseModule);
         }
