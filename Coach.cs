@@ -100,7 +100,7 @@ namespace Coach {
             response.EnsureSuccessStatusCode();
 
             byte[] modelBytes = await response.Content.ReadAsByteArrayAsync();
-            await File.WriteAllBytesAsync($"{path}/{name}/{modelFile}", modelBytes);
+            File.WriteAllBytes($"{path}/{name}/{modelFile}", modelBytes);
         }
 
         private async Task<Profile> GetProfile() {
@@ -127,12 +127,15 @@ namespace Coach {
             graph.Import(File.ReadAllBytes(graphPath));
 
             var manifest = ReadManifest(labelPath);
-            // Get first key
-            
-            // var z = JToken.FromObject(manifest).First;
 
-            string[] labels = manifest.lables;
-            string baseModule = manifest.module;
+            // Get root
+            string name = String.Empty;
+            foreach (var prop in manifest) {
+                name = prop.Name;
+            }
+            
+            string[] labels = manifest[name].labels.ToObject<string[]>();
+            string baseModule = manifest[name].module;
 
             return new CoachModel(graph, labels, baseModule);
         }
