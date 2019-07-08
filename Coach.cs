@@ -8,13 +8,83 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using TensorFlow;
+using System.Drawing;
 
 namespace Coach {
+
+    public struct ImageDims {
+        public int InputSize { get; set; }
+        public int ImageMean { get; set; }
+        public float ImageStd { get; set; }
+
+        public ImageDims(int inputSize, int imageMean, float imageStd) {
+            this.InputSize = inputSize;
+            this.ImageMean = imageMean;
+            this.ImageStd = imageStd;
+        }
+    }
+
+    public static class ImageUtil
+    {
+        public static Bitmap BitmapFromFile(string filePath) {
+            return new Bitmap(filePath, true);
+        }
+
+        public static Bitmap BitmapFromBytes(byte[] input) {
+            Bitmap bmp;
+            using (var ms = new MemoryStream(input))
+            {
+                bmp = new Bitmap(ms);
+            }
+            return bmp;
+        }
+
+        public static TFTensor TensorFromBitmap(Bitmap image, ImageDims dims)
+        {
+            int INPUT_SIZE = dims.InputSize;
+            int IMAGE_MEAN = dims.ImageMean;
+            float IMAGE_STD = dims.ImageStd;
+
+            var bitmap = new Bitmap(image, INPUT_SIZE, INPUT_SIZE);
+            
+            Color[] colors = new Color[bitmap.Size.Width * bitmap.Size.Height];
+            
+            int z = 0;
+            for (int y = bitmap.Size.Height -1; y >= 0; y--) {
+                for (int x = 0; x < bitmap.Size.Width; x++) {
+                    colors[z] = bitmap.GetPixel(x, y);
+                    z++;
+                }
+            }
+
+            float[] floatValues = new float[(INPUT_SIZE * INPUT_SIZE) * 3];
+            for (int i = 0; i < colors.Length; i++) {
+                var color = colors[i];
+
+                floatValues[i * 3] = (color.R - IMAGE_MEAN) / IMAGE_STD;
+                floatValues[i * 3 + 1] = (color.G - IMAGE_MEAN) / IMAGE_STD;
+                floatValues[i * 3 + 2] = (color.B - IMAGE_MEAN) / IMAGE_STD;
+            }
+
+            TFShape shape = new TFShape(1, INPUT_SIZE, INPUT_SIZE, 3);
+            return TFTensor.FromBuffer(shape, floatValues, 0, floatValues.Length);
+        }
+    }
+
     public class CoachModel {
         public CoachModel(TFGraph graph, string[] labels, string module) {
 
         }
         
+        private TFTensor ReadTensorFromBytes(byte[] image) {
+            var bmp = ImageUtil.BitmapFromBytes(image);
+            return ImageUtil.TensorFromBitmap(bmp, new ImageDims());
+        }
+
+        private TFTensor ReadTensorFromFile(string filePath) {
+            var bmp = ImageUtil.BitmapFromFile(filePath);
+            return ImageUtil.TensorFromBitmap(bmp, new ImageDims());
+        }
     }
 
     public struct Model {
