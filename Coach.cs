@@ -6,9 +6,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using TensorFlow;
 using System.Drawing;
+
+using System.Collections.Generic;
 
 namespace Coach {
 
@@ -71,19 +72,94 @@ namespace Coach {
         }
     }
 
-    public class CoachModel {
-        public CoachModel(TFGraph graph, string[] labels, string module) {
+    public struct CoachResult
+    {
+        public string Label { get; set; }
+        public float Confidence { get; set; }
+    }
 
+    public class CoachModel {
+        private TFGraph Graph { get; set; }
+        private TFSession Session { get; set; }
+        private string[] Labels { get; set; }
+        public CoachModel(TFGraph graph, string[] labels, string module) {
+            this.Graph = graph;
+            this.Labels = labels;
+
+            this.Session = new TFSession();
+
+            var l = new List<TFOperation>(graph.GetEnumerator());
+
+            foreach (TFOperation o in l) {
+                Console.WriteLine(o.Name);
+            }
+            int i = 0;
         }
         
         private TFTensor ReadTensorFromBytes(byte[] image) {
             var bmp = ImageUtil.BitmapFromBytes(image);
-            return ImageUtil.TensorFromBitmap(bmp, new ImageDims());
+            return ImageUtil.TensorFromBitmap(bmp, new ImageDims(224, 224, 224));
         }
 
         private TFTensor ReadTensorFromFile(string filePath) {
             var bmp = ImageUtil.BitmapFromFile(filePath);
-            return ImageUtil.TensorFromBitmap(bmp, new ImageDims());
+            return ImageUtil.TensorFromBitmap(bmp, new ImageDims(224, 224, 224));
+        }
+
+        public CoachResult Predict(string image) {
+            var imageTensor = ReadTensorFromFile(image);
+            return GetGraphResult(imageTensor);
+        }
+
+        public CoachResult Predict(byte[] image) {
+            var imageTensor = ReadTensorFromBytes(image);
+            return GetGraphResult(imageTensor);
+        }
+
+        private CoachResult GetGraphResult(TFTensor imageTensor) {
+            var inputName = "lambda_input_input";
+            var outputName = "softmax_input/Softmax";
+
+            var runner = Session.GetRunner();
+
+            var gInput = this.Graph[inputName];
+            var gResult = this.Graph[outputName];
+
+            runner.AddInput(gInput[0], imageTensor);
+            runner.Fetch(gResult[0]);
+
+            var result = runner.Run()[0];
+            var resultShape = result.Shape;
+
+            if (result.NumDims != 2 || resultShape[0] != 1)
+            {
+                var shape = "";
+                foreach (var d in resultShape)
+                {
+                    shape += $"{d} ";
+                }
+                shape = shape.Trim();
+            }
+
+            var probabilities = ((float[][])result.GetValue(jagged: true))[0];
+            int bestIdx = 0;
+            float best = 0;
+            for (int i = 0; i < probabilities.Length; i++)
+            {
+                if (probabilities[i] > best)
+                {
+                    bestIdx = i;
+                    best = probabilities[i];
+                }
+            }
+
+            var bestMatch = new CoachResult()
+            {
+                Label = this.Labels[bestIdx],
+                Confidence = best
+            };
+
+            return bestMatch;
         }
     }
 
@@ -197,9 +273,11 @@ namespace Coach {
             var graphPath = $"{path}/frozen.pb";
             var labelPath = $"{path}/manifest.json";
             
+            var graphBytes = File.ReadAllBytes(graphPath);
+
             // Load the graphdef
             var graph = new TFGraph();
-            graph.Import(File.ReadAllBytes(graphPath));
+            graph.Import(graphBytes);
 
             var manifest = ReadManifest(labelPath);
             
