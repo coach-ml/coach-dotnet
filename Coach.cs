@@ -89,8 +89,8 @@ namespace Coach {
 
             this.Session = new TFSession();
             
-            // If module...
-            this.ImageDims = new ImageDims(224, 0, 255);
+            int size = int.Parse(module.Substring(module.Length-3, module.Length));
+            this.ImageDims = new ImageDims(size, 0, 1);
         }
         
         private TFTensor ReadTensorFromBytes(byte[] image) {
@@ -114,8 +114,8 @@ namespace Coach {
         }
 
         private CoachResult GetGraphResult(TFTensor imageTensor) {
-            var inputName = "lambda_input_input";
-            var outputName = "softmax_input/Softmax";
+            var inputName = "lambda_input";
+            var outputName = "output/Softmax";
 
             var runner = Session.GetRunner();
 
