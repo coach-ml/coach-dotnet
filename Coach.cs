@@ -89,7 +89,7 @@ namespace Coach {
 
             this.Session = new TFSession();
             
-            int size = int.Parse(module.Substring(module.Length-3, module.Length));
+            int size = int.Parse(module.Substring(module.Length-3, 3));
             this.ImageDims = new ImageDims(size, 0, 1);
         }
         
@@ -166,6 +166,7 @@ namespace Coach {
         public int version { get; set; }
         public string module { get; set; }
         public string[] labels { get; set; }
+        public string tfVersion { get; set; }
     }
 
     public class Profile {
