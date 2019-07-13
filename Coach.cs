@@ -82,28 +82,25 @@ namespace Coach {
         private TFGraph Graph { get; set; }
         private TFSession Session { get; set; }
         private string[] Labels { get; set; }
+        private ImageDims ImageDims { get; set; }
         public CoachModel(TFGraph graph, string[] labels, string module) {
             this.Graph = graph;
             this.Labels = labels;
 
             this.Session = new TFSession();
-
-            var l = new List<TFOperation>(graph.GetEnumerator());
-
-            foreach (TFOperation o in l) {
-                Console.WriteLine(o.Name);
-            }
-            int i = 0;
+            
+            // If module...
+            this.ImageDims = new ImageDims(224, 0, 255);
         }
         
         private TFTensor ReadTensorFromBytes(byte[] image) {
             var bmp = ImageUtil.BitmapFromBytes(image);
-            return ImageUtil.TensorFromBitmap(bmp, new ImageDims(224, 224, 224));
+            return ImageUtil.TensorFromBitmap(bmp, this.ImageDims);
         }
 
         private TFTensor ReadTensorFromFile(string filePath) {
             var bmp = ImageUtil.BitmapFromFile(filePath);
-            return ImageUtil.TensorFromBitmap(bmp, new ImageDims(224, 224, 224));
+            return ImageUtil.TensorFromBitmap(bmp, this.ImageDims);
         }
 
         public CoachResult Predict(string image) {
