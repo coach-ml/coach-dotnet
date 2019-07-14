@@ -9,9 +9,8 @@ using Newtonsoft.Json;
 using TensorFlow;
 using System.Drawing;
 
-using System.Collections.Generic;
-
 namespace Coach {
+
 
     public struct ImageDims {
         public int InputSize { get; set; }
@@ -79,11 +78,17 @@ namespace Coach {
     }
 
     public class CoachModel {
+        private readonly float COACH_VERSION = 1f;
+
         private TFGraph Graph { get; set; }
         private TFSession Session { get; set; }
         private string[] Labels { get; set; }
         private ImageDims ImageDims { get; set; }
-        public CoachModel(TFGraph graph, string[] labels, string module) {
+        public CoachModel(TFGraph graph, string[] labels, string module, float coachVersion) {
+            if (COACH_VERSION != coachVersion) {
+                throw new Exception("Coach model incompatible with SDK version");
+            }
+
             this.Graph = graph;
             this.Labels = labels;
 
@@ -103,20 +108,17 @@ namespace Coach {
             return ImageUtil.TensorFromBitmap(bmp, this.ImageDims);
         }
 
-        public CoachResult Predict(string image) {
+        public CoachResult Predict(string image, string inputName = "input", string outputName = "output") {
             var imageTensor = ReadTensorFromFile(image);
-            return GetGraphResult(imageTensor);
+            return GetGraphResult(imageTensor, inputName, outputName);
         }
 
-        public CoachResult Predict(byte[] image) {
+        public CoachResult Predict(byte[] image, string inputName = "input", string outputName = "output") {
             var imageTensor = ReadTensorFromBytes(image);
-            return GetGraphResult(imageTensor);
+            return GetGraphResult(imageTensor, inputName, outputName);
         }
 
-        private CoachResult GetGraphResult(TFTensor imageTensor) {
-            var inputName = "input";
-            var outputName = "output";
-
+        private CoachResult GetGraphResult(TFTensor imageTensor, string inputName = "input", string outputName = "output") {
             var runner = Session.GetRunner();
 
             var gInput = this.Graph[inputName];
@@ -166,7 +168,7 @@ namespace Coach {
         public int version { get; set; }
         public string module { get; set; }
         public string[] labels { get; set; }
-        public string tfVersion { get; set; }
+        public float coachVersion { get; set; }
     }
 
     public class Profile {
@@ -189,9 +191,14 @@ namespace Coach {
             this.IsDebug = isDebug;
         }
 
-        public async Task Login(string apiKey) {
+        public async Task<CoachClient> Login(string apiKey) {
+            if (apiKey == String.Empty) {
+                throw new Exception("Invalid API Key");
+            }
             this.ApiKey = apiKey;
             this.Profile = await GetProfile();
+
+            return this;
         }
 
         private bool IsAuthenticated() {
@@ -200,6 +207,21 @@ namespace Coach {
 
         private Model ReadManifest(string path) {
             return JsonConvert.DeserializeObject<Model>(File.ReadAllText(path));
+        }
+
+        private async Task<Profile> GetProfile() {
+            var id = this.ApiKey.Substring(0, 5);
+            var url = $"https://2hhn1oxz51.execute-api.us-east-1.amazonaws.com/prod/{id}";
+
+            var request = new HttpClient();
+            request.DefaultRequestHeaders.Add("X-Api-Key", this.ApiKey);
+
+            var response = await request.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            string responseBody = await response.Content.ReadAsStringAsync();
+            var profile = JsonConvert.DeserializeObject<Profile>(responseBody);
+            return profile;
         }
 
         public async Task CacheModel(string name, string path=".") {
@@ -251,22 +273,7 @@ namespace Coach {
             byte[] modelBytes = await response.Content.ReadAsByteArrayAsync();
             File.WriteAllBytes($"{path}/{name}/{modelFile}", modelBytes);
         }
-
-        private async Task<Profile> GetProfile() {
-            var id = this.ApiKey.Substring(0, 5);
-            var url = $"https://2hhn1oxz51.execute-api.us-east-1.amazonaws.com/prod/{id}";
-
-            var request = new HttpClient();
-            request.DefaultRequestHeaders.Add("X-Api-Key", this.ApiKey);
-
-            var response = await request.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-
-            string responseBody = await response.Content.ReadAsStringAsync();
-            var profile = JsonConvert.DeserializeObject<Profile>(responseBody);
-            return profile;
-        }
-
+        
         public CoachModel GetModel(string path) {
             var graphPath = $"{path}/frozen.pb";
             var labelPath = $"{path}/manifest.json";
@@ -282,7 +289,12 @@ namespace Coach {
             string[] labels = manifest.labels;
             string baseModule = manifest.module;
 
-            return new CoachModel(graph, labels, baseModule);
+            return new CoachModel(graph, labels, baseModule, manifest.coachVersion);
+        }
+    
+        public async Task<CoachModel> GetModelRemote(string name, string path=".") {
+            await CacheModel(name, path);
+            return GetModel(path);
         }
     }
 }
