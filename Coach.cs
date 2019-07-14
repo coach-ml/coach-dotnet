@@ -10,8 +10,6 @@ using TensorFlow;
 using System.Drawing;
 
 namespace Coach {
-
-
     public struct ImageDims {
         public int InputSize { get; set; }
         public int ImageMean { get; set; }
