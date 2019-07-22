@@ -77,6 +77,8 @@ namespace Coach {
 
         public CoachResult(string[] labels, float[] probabilities)
         {
+            Results = new List<LabelProbability>();
+            
             for (var i = 0; i < labels.Length; i++) {
                 string label = labels[i];
                 float probability = probabilities[i];
