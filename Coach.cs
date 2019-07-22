@@ -8,6 +8,7 @@ using System.Text;
 using Newtonsoft.Json;
 using TensorFlow;
 using System.Drawing;
+using System.Collections.Generic;
 
 namespace Coach {
     public struct ImageDims {
@@ -69,7 +70,37 @@ namespace Coach {
         }
     }
 
-    public struct CoachResult
+    public class CoachResult
+    {
+        public List<LabelProbability> Results { get; private set; }
+        public List<LabelProbability> SortedResults { get; private set; }
+
+        public CoachResult(string[] labels, float[] probabilities)
+        {
+            for (var i = 0; i < labels.Length; i++) {
+                string label = labels[i];
+                float probability = probabilities[i];
+                
+                Results.Add(new LabelProbability() {
+                    Label = label,
+                    Confidence = probability
+                });
+            }
+            SortedResults = Results.OrderByDescending(r => r.Confidence).ToList();
+        }
+
+        public LabelProbability Best()
+        {
+            return SortedResults.FirstOrDefault();
+        }
+
+        public LabelProbability Worst()
+        {
+            return SortedResults.LastOrDefault();
+        }
+    }
+
+    public struct LabelProbability
     {
         public string Label { get; set; }
         public float Confidence { get; set; }
@@ -84,7 +115,7 @@ namespace Coach {
         private ImageDims ImageDims { get; set; }
         public CoachModel(TFGraph graph, string[] labels, string module, float coachVersion) {
             if (COACH_VERSION != coachVersion) {
-                throw new Exception("Coach model incompatible with SDK version");
+                throw new Exception($"Coach model v{coachVersion} incompatible with SDK version {COACH_VERSION}");
             }
 
             this.Graph = graph;
@@ -93,6 +124,7 @@ namespace Coach {
             this.Session = new TFSession(this.Graph);
             
             int size = int.Parse(module.Substring(module.Length-3, 3));
+            // TODO: Normalization
             this.ImageDims = new ImageDims(size, 0, 1);
         }
         
@@ -139,24 +171,7 @@ namespace Coach {
             }
 
             var probabilities = ((float[][])result.GetValue(jagged: true))[0];
-            int bestIdx = 0;
-            float best = 0;
-            for (int i = 0; i < probabilities.Length; i++)
-            {
-                if (probabilities[i] > best)
-                {
-                    bestIdx = i;
-                    best = probabilities[i];
-                }
-            }
-
-            var bestMatch = new CoachResult()
-            {
-                Label = this.Labels[bestIdx],
-                Confidence = best
-            };
-
-            return bestMatch;
+            return new CoachResult(Labels, probabilities);
         }
     }
 
@@ -177,6 +192,10 @@ namespace Coach {
 
         [JsonProperty("models")]
         public Model[] Models { get; set; }
+    }
+
+    public enum ModelType {
+        Frozen, Unity, Mobile
     }
 
     public class CoachClient {
@@ -222,41 +241,41 @@ namespace Coach {
             return profile;
         }
 
-        public async Task CacheModel(string name, string path=".") {
+        public async Task CacheModel(string modelName, string path = ".", bool skipMatch = true, ModelType modelType = ModelType.Frozen) {
             if (!IsAuthenticated())
                 throw new Exception("User is not authenticated");
 
-            // Create the target dir
-            if (!Directory.Exists(name))
-                Directory.CreateDirectory(name);
+            Model model = this.Profile.Models.Single(m => m.name == modelName);
+            int version = model.version;
 
-            Model model = this.Profile.Models.Single(m => m.name == name);
-
-            int profileVersion = model.version;
-            string profileManifest = $"{path}/{name}/manifest.json";
+            string modelDir = Path.Join(path, modelName);
+            string profileManifest = Path.Join(modelDir, "manifest.json");
 
             if (File.Exists(profileManifest)) {
                 // Load existing model manifest
                 Model manifest = ReadManifest(profileManifest);
-                int manifestVersion = manifest.version;
 
-                if (profileVersion == manifestVersion) {
+                int manifestVersion = manifest.version;
+                int profileVersion = model.version;
+
+                if (profileVersion == manifestVersion && skipMatch) {
                     if (this.IsDebug) {
                         Console.WriteLine("Version match, skipping model download");
                     }
-
                     return;
                 }
-            } else {
-                var json = JsonConvert.SerializeObject(model);
-                File.WriteAllText(profileManifest, json);
+            } else if (!Directory.Exists(modelDir)) {
+                Directory.CreateDirectory(modelDir);
             }
+            
+            // Write downloaded manifest
+            var json = JsonConvert.SerializeObject(model);
+            File.WriteAllText(profileManifest, json);
 
-            var baseUrl = $"https://la41byvnkj.execute-api.us-east-1.amazonaws.com/prod/{this.Profile.Bucket}/model-bin?object=trained/{name}/{profileVersion}/model";
+            var baseUrl = $"https://la41byvnkj.execute-api.us-east-1.amazonaws.com/prod/{this.Profile.Bucket}/model-bin?object=trained/{modelName}/{version}/model";
                     
             var modelFile = "frozen.pb";
             var modelUrl = $"{baseUrl}/{modelFile}";
-
 
             var request = new HttpClient();
             request.DefaultRequestHeaders.Add("X-Api-Key", this.ApiKey);
@@ -269,12 +288,12 @@ namespace Coach {
             response.EnsureSuccessStatusCode();
 
             byte[] modelBytes = await response.Content.ReadAsByteArrayAsync();
-            File.WriteAllBytes($"{path}/{name}/{modelFile}", modelBytes);
+            File.WriteAllBytes(Path.Join(path, modelName, modelFile), modelBytes);
         }
         
         public CoachModel GetModel(string path) {
-            var graphPath = $"{path}/frozen.pb";
-            var labelPath = $"{path}/manifest.json";
+            var graphPath = Path.Join(path, "frozen.pb");
+            var labelPath = Path.Join(path, "manifest.json");
             
             var graphBytes = File.ReadAllBytes(graphPath);
 
@@ -286,13 +305,14 @@ namespace Coach {
             
             string[] labels = manifest.labels;
             string baseModule = manifest.module;
+            float coachVersion = manifest.coachVersion;
 
-            return new CoachModel(graph, labels, baseModule, manifest.coachVersion);
+            return new CoachModel(graph, labels, baseModule, coachVersion);
         }
     
-        public async Task<CoachModel> GetModelRemote(string name, string path=".") {
-            await CacheModel(name, path);
-            return GetModel(path);
+        public async Task<CoachModel> GetModelRemote(string modelName, string path=".") {
+            await CacheModel(modelName, path);
+            return GetModel(Path.Join(modelName, path));
         }
     }
 }
