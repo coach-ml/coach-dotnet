@@ -127,7 +127,7 @@ namespace Coach {
             
             int size = int.Parse(module.Substring(module.Length-3, 3));
             // TODO: Normalization
-            this.ImageDims = new ImageDims(size, 0, 1);
+            this.ImageDims = new ImageDims(size, 0, 255);
         }
         
         private TFTensor ReadTensorFromBytes(byte[] image) {
