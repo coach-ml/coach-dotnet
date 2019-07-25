@@ -126,7 +126,6 @@ namespace Coach {
             this.Session = new TFSession(this.Graph);
             
             int size = int.Parse(module.Substring(module.Length-3, 3));
-            // TODO: Normalization
             this.ImageDims = new ImageDims(size, 0, 255);
         }
         

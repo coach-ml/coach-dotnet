@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <RootNamespace>Coach</RootNamespace>
-    <PackageId>Coach</PackageId>
+    <PackageId>Coach-ML</PackageId>
     <Version>0.0.1</Version>
     <Authors>lkuich</Authors>
     <Company>lkuich</Company>

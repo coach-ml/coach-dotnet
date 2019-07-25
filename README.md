@@ -4,10 +4,10 @@ Coach is an end-to-end Image Recognition platform, we provide the tooling to do 
 
 The .NET SDK interacts with the Coach web API in order to download and parse your trained Coach models.
 
-## Installing
-Install and update using NuGet
+## Installation
+Install and update from NuGet
 ```bash
-dotnet add package Coach
+dotnet add package Coach-ML
 ```
 
 ## Usage
@@ -15,28 +15,29 @@ dotnet add package Coach
 Coach can be initialized 2 different ways. If you are only using the offline model parsing capabilities and already have a model package on disk, you can initialize like so:
 
 ```csharp
-var coach = new Coach();
+var coach = new CoachClient();
 
 // We already had the `flowers` model on disk, no need to authenticate:
-var prediction = coach.GetModel('flowers').Predict('rose.jpg');
+var prediction = coach.GetModel("flowers").Predict("rose.jpg").Best();
 Console.WriteLine($"{prediction.Label}: {prediction.Confidence}");
 ```
 
 However, in order to download your trained models, you must authenticate with your API key:
 ```csharp
-var coach = new Coach().login('myapikey');
+var coach = new CoachClient().Login("myapikey");
 
 // Now that we're authenticated, we can cache our models for future use:
-await coach.CacheModel('flowers');
+await coach.CacheModel("flowers");
 
 // Evaluate with our cached model:
-var prediction = coach.GetModel('flowers').Predict('rose.jpg');
+var results = coach.GetModel("flowers").Predict("rose.jpg");
+var bestMatch = results.Best();
 ```
 
 Another, more concise example not using caching:
 ```csharp
-var coach = new Coach().login('myapikey');
-var prediction = await coach.GetModelRemote('flowers').Predict('rose.jpg');
+var coach = new CoachClient().Login("myapikey");
+var prediction = await coach.GetModelRemote("flowers").Predict("rose.jpg").Best();
 ```
 
 ## API Breakdown
@@ -68,5 +69,19 @@ Specify the directory of an image file. Parses the specified image as a Tensor a
 Specify the image as a byte array. Parses the specified image as a Tensor and runs it through the loaded model. Optionally accepts `input` and `output` tensor names.
 
 ### CoachResult
-`string Label` -> The label of the prediction
-`float Confidence` -> The confidence of the prediction
+`List<LabelProbability> Results`
+Unsorted prediction results.
+
+`List<LabelProbability> SortedResults`
+Sorted prediction results, descending in Confidence.
+
+`LabelProbability Best()`
+Most Confident result.
+
+`LabelProbability Worst()`
+Least Confident result.
+
+### LabelProbability
+`string Label` -> Label of result
+
+`float Confidence` -> Confidence of result
