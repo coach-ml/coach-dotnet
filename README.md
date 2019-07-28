@@ -43,42 +43,42 @@ var prediction = await coach.GetModelRemote("flowers").Predict("rose.jpg").Best(
 ## API Breakdown
 
 ### CoachClient
-`CoachClient(bool isDebug = false)`
+`CoachClient(bool isDebug = false)`  
 Optional `isDebug`, if `true`, additional logs will be displayed.
 
 `async Task<CoachClient> Login(string apiKey)`  
 Authenticates with Coach service and allows for model caching. Accepts API Key as its only parameter. Returns its instance of `CoachClient`.
 
-`async Task CacheModel(string name, string path=".")`
+`async Task CacheModel(string name, string path=".")`  
 Downloads model from Coach service to disk. Specify the name of the model, and the path to store it. This will create a new directory in the specified path and store any model related documents there. By default it will skip the download if the local version of the model matches the remote.
 
-`CoachModel GetModel(string path)`
-Loads model into memory. Specify the path of the cached models directory.
+`CoachModel GetModel(string modelName, string path=".")`  
+Loads model into memory. Specify the name and path of the model.
 
-`async Task<CoachModel> GetModelRemote(string name, string path=".")`
+`async Task<CoachModel> GetModelRemote(string name, string path=".")`  
 Downloads model from Coach service to disk, and loads it into memory.
 
 ### CoachModel
-`CoachModel(TFGraph graph, string[] labels, string module, float coachVersion)`
+`CoachModel(TFGraph graph, string[] labels, string module, float coachVersion)`  
 Initializes a new instance of `CoachModel`.
 
 `CoachResult Predict(string image, string inputName = "input", string outputName = "output")`  
 Specify the directory of an image file. Parses the specified image as a Tensor and runs it through the loaded model. Optionally accepts `input` and `output` tensor names.
 
-`CoachResult Predict(byte[] image, string inputName = "input", string outputName = "output")`
+`CoachResult Predict(byte[] image, string inputName = "input", string outputName = "output")`  
 Specify the image as a byte array. Parses the specified image as a Tensor and runs it through the loaded model. Optionally accepts `input` and `output` tensor names.
 
 ### CoachResult
-`List<LabelProbability> Results`
+`List<LabelProbability> Results`  
 Unsorted prediction results.
 
-`List<LabelProbability> SortedResults`
+`List<LabelProbability> SortedResults`  
 Sorted prediction results, descending in Confidence.
 
-`LabelProbability Best()`
+`LabelProbability Best()`  
 Most Confident result.
 
-`LabelProbability Worst()`
+`LabelProbability Worst()`  
 Least Confident result.
 
 ### LabelProbability
