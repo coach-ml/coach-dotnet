@@ -72,7 +72,14 @@ namespace Coach {
 
     public class CoachResult
     {
+        ///<summary>
+        //Unsorted prediction results
+        ///</summary>
         public List<LabelProbability> Results { get; private set; }
+        
+        ///<summary>
+        //Sorted prediction results, descending in Confidence
+        ///</summary>
         public List<LabelProbability> SortedResults { get; private set; }
 
         public CoachResult(string[] labels, float[] probabilities)
@@ -91,11 +98,17 @@ namespace Coach {
             SortedResults = Results.OrderByDescending(r => r.Confidence).ToList();
         }
 
+        ///<summary>
+        ///Most Confident result
+        ///</summary>
         public LabelProbability Best()
         {
             return SortedResults.FirstOrDefault();
         }
 
+        ///<summary>
+        ///Least Confident result
+        ///</summary>
         public LabelProbability Worst()
         {
             return SortedResults.LastOrDefault();
@@ -115,6 +128,13 @@ namespace Coach {
         private TFSession Session { get; set; }
         private string[] Labels { get; set; }
         private ImageDims ImageDims { get; set; }
+
+        ///<summary>
+        ///<param>Model graph</param>
+        ///<param>Model labels</param>
+        ///<param>Base module used for training</param>
+        ///<param>Model SDK version</param>
+        ///</summary>
         public CoachModel(TFGraph graph, string[] labels, string module, float coachVersion) {
             if (COACH_VERSION != coachVersion) {
                 throw new Exception($"Coach model v{coachVersion} incompatible with SDK version {COACH_VERSION}");
@@ -139,11 +159,23 @@ namespace Coach {
             return ImageUtil.TensorFromBitmap(bmp, this.ImageDims);
         }
 
+        ///<summary>
+        ///Parses the specified image as a Tensor and runs it through the loaded model
+        ///<param>Path to the sample image</param>
+        ///<param>Name of the input in the graph</param>
+        ///<param>Name of the output in the graph</param>
+        ///</summary>
         public CoachResult Predict(string image, string inputName = "input", string outputName = "output") {
             var imageTensor = ReadTensorFromFile(image);
             return GetGraphResult(imageTensor, inputName, outputName);
         }
 
+        ///<summary>
+        ///Parses the specified image bytes as a Tensor and runs it through the loaded model
+        ///<param>Image as byte array</param>
+        ///<param>Name of the input in the graph</param>
+        ///<param>Name of the output in the graph</param>
+        ///</summary>
         public CoachResult Predict(byte[] image, string inputName = "input", string outputName = "output") {
             var imageTensor = ReadTensorFromBytes(image);
             return GetGraphResult(imageTensor, inputName, outputName);
@@ -201,14 +233,21 @@ namespace Coach {
 
     public class CoachClient {
         
-        public bool IsDebug { get; private set; }
+        private bool IsDebug { get; set; }
         private Profile Profile { get; set; }
         private string ApiKey { get; set; }
 
+        ///<summary>
+        ///<para>If true, additional logs will be displayed</para>
+        ///</summary>
         public CoachClient(bool isDebug = false) {
             this.IsDebug = isDebug;
         }
 
+        ///<summary>
+        ///Authenticates with Coach service and allows for model caching. Accepts API Key as its only parameter
+        ///<param>Your API key</param>
+        ///</summary>
         public async Task<CoachClient> Login(string apiKey) {
             if (apiKey == String.Empty) {
                 throw new Exception("Invalid API Key");
@@ -242,6 +281,13 @@ namespace Coach {
             return profile;
         }
 
+        ///<summary>
+        ///Downloads model from Coach service to disk
+        ///<param>Name of model</param>
+        ///<param>Path to cache model</param>
+        ///<param>If true, the download will be skipped if the model of the same filename already exists</param>
+        ///<param>The type of model to be cached</param>
+        ///</summary>
         public async Task CacheModel(string modelName, string path = ".", bool skipMatch = true, ModelType modelType = ModelType.Frozen) {
             if (!IsAuthenticated())
                 throw new Exception("User is not authenticated");
@@ -292,6 +338,10 @@ namespace Coach {
             File.WriteAllBytes(Path.Join(path, modelName, modelFile), modelBytes);
         }
         
+        ///<summary>
+        ///Loads model into memory
+        ///<param>Path to the model</param>
+        ///</summary>
         public CoachModel GetModel(string path) {
             var graphPath = Path.Join(path, "frozen.pb");
             var labelPath = Path.Join(path, "manifest.json");
@@ -311,6 +361,11 @@ namespace Coach {
             return new CoachModel(graph, labels, baseModule, coachVersion);
         }
     
+        ///<summary>
+        ///Downloads model from Coach service to disk, and loads it into memory
+        ///<param>Name of model</param>
+        ///<param>Path to cache the model</param>
+        ///</summary>
         public async Task<CoachModel> GetModelRemote(string modelName, string path=".") {
             await CacheModel(modelName, path);
             return GetModel(Path.Join(modelName, path));
