@@ -3,3 +3,6 @@ bin/
 obj/
 flowers/
 coach-dotnet.csproj
+publish.bat
+rose.jpg
+Test.cs
