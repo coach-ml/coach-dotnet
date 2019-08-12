@@ -320,8 +320,19 @@ namespace Coach {
             File.WriteAllText(profileManifest, json);
 
             var baseUrl = $"https://la41byvnkj.execute-api.us-east-1.amazonaws.com/prod/{this.Profile.Bucket}/model-bin?object=trained/{modelName}/{version}/model";
-                    
-            var modelFile = "frozen.pb";
+            
+            string modelFile = String.Empty;
+            if (modelType == ModelType.Frozen)
+            {
+                modelFile = "frozen.pb";
+            } else if (modelType == ModelType.Unity)
+            {
+                modelFile = "unity.bytes";
+
+            } else if (modelType == ModelType.Mobile)
+            {
+                modelFile = "mobile.tflite";
+            }
             var modelUrl = $"{baseUrl}/{modelFile}";
 
             var request = new HttpClient();
