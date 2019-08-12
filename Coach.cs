@@ -379,7 +379,7 @@ namespace Coach {
         ///</summary>
         public async Task<CoachModel> GetModelRemote(string modelName, string path=".") {
             await CacheModel(modelName, path);
-            return GetModel(Path.Join(modelName, path));
+            return GetModel(Path.Join(path, modelName));
         }
     }
 }
