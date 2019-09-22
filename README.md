@@ -1,6 +1,3 @@
-# IMPORTANT
-As of Sept 21, 2019, Coach v2 models are no longer supported by this .NET SDK as they are built with TF 1.14. This project uses [TensorFlowSharp](https://github.com/migueldeicaza/TensorFlowSharp), which currently only supports up to TF 1.13. Plans to update TensorFlowSharp or potentially migrate to ML.NET are in-progress. Thank you for your patience! ✌️
-
 # Coach .NET Core SDK
 
 Coach is an end-to-end Image Recognition platform, we provide the tooling to do effective data collection, training, and on-device parsing of Image Recognition models.
