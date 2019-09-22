@@ -122,7 +122,7 @@ namespace Coach {
     }
 
     public class CoachModel {
-        private readonly float COACH_VERSION = 1f;
+        private readonly float COACH_VERSION = 2f;
 
         private TFGraph Graph { get; set; }
         private TFSession Session { get; set; }
