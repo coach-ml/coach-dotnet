@@ -218,8 +218,6 @@ namespace Coach {
     }
 
     public class Profile {
-        [JsonProperty("id")]
-        public string Id { get; set; }
         [JsonProperty("bucket")]
         public string Bucket { get; set; }
 
@@ -268,7 +266,7 @@ namespace Coach {
 
         private async Task<Profile> GetProfile() {
             var id = this.ApiKey.Substring(0, 5);
-            var url = $"https://2hhn1oxz51.execute-api.us-east-1.amazonaws.com/prod/{id}";
+            var url = $"https://x27xyu10z1.execute-api.us-east-1.amazonaws.com/latest/profile?id={id}";
 
             var request = new HttpClient();
             request.DefaultRequestHeaders.Add("X-Api-Key", this.ApiKey);
