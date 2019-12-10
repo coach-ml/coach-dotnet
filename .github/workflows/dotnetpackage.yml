@@ -1,0 +1,27 @@
+name: Run coach-dotnet tests
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-16.04
+    strategy:
+      max-parallel: 4
+      matrix:
+        dotnet: [ '2.2.103', '3.0.100', '3.1.100-preview1-014459' ]
+    
+    steps:
+      - uses: actions/checkout@master
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - run: dotnet build Coach.csproj
+
+      - name: Setup env vars
+        run: |
+          export API_KEY=A2botdrxAn68aZh8Twwwt2sPBJdCfH3zO02QDMt0
+
+      - name: Test with unittest
+        run: |
+          dotnet run Program.cs
