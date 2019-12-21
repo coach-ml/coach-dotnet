@@ -10,8 +10,8 @@ namespace Coach.Tests
 
         public ModelTests()
         {
-            var c = new CoachClient(isDebug: true).Login("").Result;
-            _model = c.GetModelRemote("small-flowers").Result;
+            var c = new CoachClient(isDebug: true).Login("A2botdrxAn68aZh8Twwwt2sPBJdCfH3zO02QDMt0").Result;
+            _model = c.GetModelRemote("small_flowers").Result;
         }
 
         [Fact]

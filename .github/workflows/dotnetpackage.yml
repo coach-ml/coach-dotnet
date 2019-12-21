@@ -16,12 +16,9 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet }}
-      - run: dotnet build Coach.csproj
-
       - name: Setup env vars
         run: |
           export API_KEY=A2botdrxAn68aZh8Twwwt2sPBJdCfH3zO02QDMt0
-
       - name: Test with unittest
         run: |
-          dotnet run Program.cs
+          dotnet test

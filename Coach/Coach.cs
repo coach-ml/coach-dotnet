@@ -237,7 +237,7 @@ namespace Coach
     public struct Model
     {
         public string name { get; set; }
-        public string status { get; set; }
+        public Status status { get; set; }
         public int version { get; set; }
         public string module { get; set; }
         public string[] labels { get; set; }
@@ -327,7 +327,11 @@ namespace Coach
             if (!IsAuthenticated())
                 throw new Exception("User is not authenticated");
 
-            Model model = this.Profile.Models.Single(m => m.name == modelName);
+            Nullable<Model> sourceModel = this.Profile.Models.SingleOrDefault(m => m.name == modelName);
+            if (sourceModel == null)
+                throw new Exception($"{modelName} is an invalid model");
+            
+            Model model = sourceModel.Value;
             int version = model.version;
 
             string modelDir = Path.Join(path, modelName);
